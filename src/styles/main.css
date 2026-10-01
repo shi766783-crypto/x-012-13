@@ -110,6 +110,13 @@ button {
   color: #b75a24;
 }
 
+.metric-sub {
+  display: block;
+  margin-top: 8px;
+  color: #657266;
+  font-size: 0.78rem;
+}
+
 .achievement-score strong {
   color: #2f7d4f;
 }

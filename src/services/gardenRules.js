@@ -5,28 +5,48 @@ export function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-export function getWateringStatus(plant, today = todayISO()) {
+export function getWateringInfo(plant, today = todayISO()) {
   const lastWatered = plant.lastWateredDate || plant.purchaseDate || today
   const elapsed = daysBetween(lastWatered, today)
   const frequency = Number(plant.wateringFrequency) || 1
+  const daysUntilDue = frequency - elapsed
 
-  if (elapsed === 0) return '已浇水'
-  if (elapsed < frequency) return '已浇水'
-  if (elapsed === frequency) return '待浇水'
-  return '已过期'
+  if (daysUntilDue > 0) {
+    return { status: '已浇水', daysUntilDue, label: `还有 ${daysUntilDue} 天`, tone: 'ok' }
+  }
+  if (daysUntilDue === 0) {
+    return { status: '待浇水', daysUntilDue, label: '今日到期', tone: 'warning' }
+  }
+  return { status: '已过期', daysUntilDue, label: `逾期 ${-daysUntilDue} 天`, tone: 'danger' }
+}
+
+export function getWateringStatus(plant, today = todayISO()) {
+  return getWateringInfo(plant, today).status
+}
+
+export function withWateringInfo(plant, today = todayISO()) {
+  const info = getWateringInfo(plant, today)
+  return {
+    ...plant,
+    wateringStatus: info.status,
+    wateringDaysUntilDue: info.daysUntilDue,
+    wateringLabel: info.label,
+    wateringTone: info.tone,
+  }
 }
 
 export function getDueWateringPlants(plants, today = todayISO()) {
   return plants
-    .map((plant) => ({ ...plant, wateringStatus: getWateringStatus(plant, today) }))
+    .map((plant) => withWateringInfo(plant, today))
     .filter((plant) => plant.wateringStatus === '待浇水' || plant.wateringStatus === '已过期')
-    .sort((a, b) => statusWeight(b.wateringStatus) - statusWeight(a.wateringStatus))
+    .sort((a, b) => a.wateringDaysUntilDue - b.wateringDaysUntilDue)
 }
 
 export function getDashboard(plants, careRecords, growthRecords) {
   const currentMonth = monthOf(todayISO())
   const alivePlants = plants.filter((plant) => plant.alive !== false)
   const duePlants = getDueWateringPlants(plants)
+  const dueToday = duePlants.filter((plant) => plant.wateringStatus === '待浇水').length
   const monthlyFertilizing = careRecords.filter(
     (record) => record.type === '施肥' && monthOf(record.date) === currentMonth,
   ).length
@@ -36,6 +56,8 @@ export function getDashboard(plants, careRecords, growthRecords) {
   return {
     totalPlants: plants.length,
     dueWatering: duePlants.length,
+    dueToday,
+    overdue: duePlants.length - dueToday,
     monthlyFertilizing,
     survivalRate,
     averageScore,
@@ -166,8 +188,4 @@ function countCurrentStreak(descDates) {
   }
 
   return streak
-}
-
-function statusWeight(status) {
-  return status === '已过期' ? 2 : status === '待浇水' ? 1 : 0
 }
