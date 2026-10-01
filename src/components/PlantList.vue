@@ -22,8 +22,8 @@ defineProps({
         <div class="plant-card-body">
           <div class="plant-title">
             <h3>{{ plant.name }}</h3>
-            <span :class="['status-pill', plant.wateringStatus === '已过期' ? 'danger' : plant.wateringStatus === '待浇水' ? 'warning' : 'ok']">
-              {{ plant.wateringStatus }}
+            <span :class="['status-pill', plant.wateringTone]">
+              {{ plant.wateringStatusLabel }}
             </span>
           </div>
           <p>{{ plant.variety || '未填写品种' }}</p>

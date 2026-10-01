@@ -9,8 +9,8 @@ import {
   createId,
   getDashboard,
   getDueWateringPlants,
-  getWateringStatus,
   updateWateringGoal,
+  withWateringInfo,
 } from '../services/gardenRules'
 
 const demoState = {
@@ -102,9 +102,7 @@ export function useGardenStore() {
   const storedState = loadGardenState()
   const state = reactive(storedState || demoState)
 
-  const plantsWithStatus = computed(() =>
-    state.plants.map((plant) => ({ ...plant, wateringStatus: getWateringStatus(plant) })),
-  )
+  const plantsWithStatus = computed(() => state.plants.map((plant) => withWateringInfo(plant)))
   const dueWateringPlants = computed(() => getDueWateringPlants(state.plants))
   const dashboard = computed(() => getDashboard(state.plants, state.careRecords, state.growthRecords))
   const goals = computed(() => updateWateringGoal(state.goals, state.careRecords))

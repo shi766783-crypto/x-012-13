@@ -22,8 +22,8 @@ defineProps({
           <strong>{{ plant.name }}</strong>
           <p>{{ plant.location }} · 每 {{ plant.wateringFrequency }} 天浇水 · 上次 {{ formatDate(plant.lastWateredDate) }}</p>
         </div>
-        <span :class="['status-pill', plant.wateringStatus === '已过期' ? 'danger' : 'warning']">
-          {{ plant.wateringStatus }}
+        <span :class="['status-pill', plant.wateringTone]">
+          {{ plant.wateringStatusLabel }}
         </span>
       </article>
     </div>

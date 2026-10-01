@@ -5,22 +5,52 @@ export function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-export function getWateringStatus(plant, today = todayISO()) {
+// 浇水状态的唯一计算入口：三档口径（已浇水/待浇水/已过期）与细化文案
+// （还有几天/今日到期/已逾期几天）都由这里派生，提醒列表、仪表盘、
+// 养护评分、成就判断统一消费，保证口径一致。
+export function getWateringStatusInfo(plant, today = todayISO()) {
   const lastWatered = plant.lastWateredDate || plant.purchaseDate || today
   const elapsed = daysBetween(lastWatered, today)
   const frequency = Number(plant.wateringFrequency) || 1
+  const daysUntilDue = frequency - elapsed
 
-  if (elapsed === 0) return '已浇水'
-  if (elapsed < frequency) return '已浇水'
-  if (elapsed === frequency) return '待浇水'
-  return '已过期'
+  if (daysUntilDue > 0) {
+    return {
+      status: '已浇水',
+      label: elapsed === 0 ? '今日已浇水' : `还有 ${daysUntilDue} 天`,
+      tone: 'ok',
+      daysUntilDue,
+    }
+  }
+  if (daysUntilDue === 0) {
+    return { status: '待浇水', label: '今日到期', tone: 'warning', daysUntilDue }
+  }
+  return { status: '已过期', label: `已逾期 ${-daysUntilDue} 天`, tone: 'danger', daysUntilDue }
+}
+
+export function getWateringStatus(plant, today = todayISO()) {
+  return getWateringStatusInfo(plant, today).status
+}
+
+export function withWateringInfo(plant, today) {
+  const info = getWateringStatusInfo(plant, today)
+  return {
+    ...plant,
+    wateringStatus: info.status,
+    wateringStatusLabel: info.label,
+    wateringTone: info.tone,
+    daysUntilDue: info.daysUntilDue,
+  }
 }
 
 export function getDueWateringPlants(plants, today = todayISO()) {
   return plants
-    .map((plant) => ({ ...plant, wateringStatus: getWateringStatus(plant, today) }))
+    .map((plant) => withWateringInfo(plant, today))
     .filter((plant) => plant.wateringStatus === '待浇水' || plant.wateringStatus === '已过期')
-    .sort((a, b) => statusWeight(b.wateringStatus) - statusWeight(a.wateringStatus))
+    .sort(
+      (a, b) =>
+        statusWeight(b.wateringStatus) - statusWeight(a.wateringStatus) || a.daysUntilDue - b.daysUntilDue,
+    )
 }
 
 export function getDashboard(plants, careRecords, growthRecords) {
